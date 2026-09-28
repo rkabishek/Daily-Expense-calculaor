@@ -1,0 +1,14 @@
+{
+  "monthlyBudget" : 100000.0,
+  "expenses" : [ {
+    "date" : "09/11/2025",
+    "category" : "Transportation",
+    "amount" : 10000.0,
+    "description" : ""
+  }, {
+    "date" : "09/11/2025",
+    "category" : "Bills",
+    "amount" : 12000.0,
+    "description" : "grocery"
+  } ]
+}

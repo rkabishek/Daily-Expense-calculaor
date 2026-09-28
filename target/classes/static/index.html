@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>Daily Expense Tracker</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Syne:wght@700;800&display=swap" rel="stylesheet"/>
+    <style>
+        /* ===== RESET & BASE ===== */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --c1: #ff6b6b; --c2: #ffb86b; --c3: #6bffb8; --c4: #6bb3ff; --c5: #c56bff;
+            --dark: #0f172a; --card: #ffffff; --muted: #5b5f6a;
+            --radius: 14px; --shadow: 0 10px 30px rgba(16,24,40,0.10);
+            font-family: 'Nunito', sans-serif;
+        }
+        html, body { min-height: 100%; background: linear-gradient(135deg,#fffaf0,#f2f9ff); color: var(--dark); }
+
+        /* ===== AUTH SCREENS ===== */
+        #authWrapper {
+            min-height: 100vh;
+            display: flex; align-items: center; justify-content: center;
+            background: linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);
+            padding: 20px;
+        }
+        .auth-box {
+            background: rgba(255,255,255,0.06);
+            backdrop-filter: blur(18px);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 24px;
+            padding: 44px 40px;
+            width: 100%; max-width: 420px;
+            box-shadow: 0 30px 80px rgba(0,0,0,0.4);
+            animation: slideUp 0.5s cubic-bezier(.22,1,.36,1);
+        }
+        @keyframes slideUp {
+            from { opacity:0; transform:translateY(30px); }
+            to   { opacity:1; transform:translateY(0); }
+        }
+        .auth-logo {
+            text-align: center; margin-bottom: 28px;
+        }
+        .auth-logo .icon { font-size: 48px; display:block; margin-bottom:8px; }
+        .auth-logo h1 {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.7rem; font-weight: 800;
+            color: #fff; letter-spacing: -0.5px;
+        }
+        .auth-logo p { color: rgba(255,255,255,0.55); font-size: 0.9rem; margin-top:4px; }
+
+        .auth-tabs {
+            display: flex; gap: 6px;
+            background: rgba(255,255,255,0.07);
+            border-radius: 12px; padding: 5px;
+            margin-bottom: 28px;
+        }
+        .auth-tab {
+            flex: 1; padding: 9px;
+            border: none; border-radius: 9px;
+            background: transparent; color: rgba(255,255,255,0.5);
+            font-family: 'Nunito', sans-serif; font-weight: 700; font-size: 0.9rem;
+            cursor: pointer; transition: all 0.2s;
+        }
+        .auth-tab.active {
+            background: linear-gradient(90deg,var(--c1),var(--c4));
+            color: #fff; box-shadow: 0 4px 14px rgba(107,179,255,0.3);
+        }
+
+        .auth-form { display: none; flex-direction: column; gap: 16px; }
+        .auth-form.visible { display: flex; animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+        .field-group { display: flex; flex-direction: column; gap: 6px; }
+        .field-group label { color: rgba(255,255,255,0.65); font-size:0.85rem; font-weight:700; letter-spacing:0.3px; }
+        .field-group input {
+            padding: 13px 16px;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 11px; color: #fff;
+            font-family: 'Nunito', sans-serif; font-size: 0.95rem;
+            transition: border 0.2s, background 0.2s;
+            outline: none;
+        }
+        .field-group input::placeholder { color: rgba(255,255,255,0.3); }
+        .field-group input:focus {
+            border-color: var(--c4);
+            background: rgba(107,179,255,0.1);
+        }
+
+        .auth-btn {
+            padding: 14px;
+            background: linear-gradient(90deg,var(--c1),var(--c4));
+            border: none; border-radius: 11px;
+            color: #fff; font-family:'Nunito',sans-serif;
+            font-size: 1rem; font-weight: 800;
+            cursor: pointer; letter-spacing: 0.3px;
+            box-shadow: 0 6px 20px rgba(107,179,255,0.3);
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-top: 4px;
+        }
+        .auth-btn:hover { transform:translateY(-2px); box-shadow:0 10px 28px rgba(107,179,255,0.4); }
+        .auth-btn:active { transform:translateY(0); }
+
+        .forgot-link {
+            text-align: right; margin-top: -8px;
+        }
+        .forgot-link a {
+            color: var(--c4); font-size: 0.83rem; font-weight: 700;
+            text-decoration: none; cursor: pointer;
+            transition: color 0.2s;
+        }
+        .forgot-link a:hover { color: var(--c3); }
+
+        .auth-msg {
+            padding: 11px 14px; border-radius: 10px;
+            font-size: 0.88rem; font-weight: 700;
+            text-align: center; display: none;
+        }
+        .auth-msg.success { background:rgba(107,255,184,0.12); color:#6bffb8; border:1px solid rgba(107,255,184,0.25); display:block; }
+        .auth-msg.error   { background:rgba(255,107,107,0.12); color:#ff9999; border:1px solid rgba(255,107,107,0.25); display:block; }
+        .auth-msg.info    { background:rgba(107,179,255,0.12); color:#a0d0ff; border:1px solid rgba(107,179,255,0.25); display:block; }
+
+        /* back link inside forgot form */
+        .back-link {
+            text-align:center; color:rgba(255,255,255,0.4);
+            font-size:0.85rem;
+        }
+        .back-link a { color:var(--c4); cursor:pointer; font-weight:700; text-decoration:none; }
+        .back-link a:hover { color:var(--c3); }
+
+        /* reset code display */
+        .reset-code-box {
+            background: rgba(107,255,184,0.1);
+            border: 1px solid rgba(107,255,184,0.3);
+            border-radius: 10px; padding: 12px;
+            text-align: center; display: none;
+        }
+        .reset-code-box .code {
+            font-size: 2rem; font-weight: 900; letter-spacing: 6px; color: #6bffb8;
+        }
+        .reset-code-box p { color:rgba(255,255,255,0.5); font-size:0.8rem; margin-top:4px; }
+
+        /* ===== MAIN APP ===== */
+        #appWrapper { display: none; }
+        .wrap { max-width:1400px; margin:26px auto; padding:20px; }
+        header {
+            display:flex; align-items:center; gap:18px;
+            background:linear-gradient(90deg,var(--c1),var(--c4));
+            color:white; padding:18px; border-radius:16px; box-shadow:var(--shadow);
+            justify-content: space-between;
+        }
+        .header-left { display:flex; align-items:center; gap:14px; }
+        header h1 { margin:0; font-family:'Syne',sans-serif; font-size:1.6rem; }
+        header p  { margin:0; opacity:0.9; font-weight:600; }
+        .user-badge {
+            display:flex; align-items:center; gap:10px;
+            background:rgba(255,255,255,0.15); border-radius:12px; padding:8px 14px;
+        }
+        .user-badge span { font-weight:800; font-size:0.95rem; }
+        .logout-btn {
+            padding:8px 14px; border-radius:9px; border:none;
+            background:rgba(255,255,255,0.2); color:#fff;
+            font-family:'Nunito',sans-serif; font-weight:800; font-size:0.85rem;
+            cursor:pointer; transition:background 0.2s;
+        }
+        .logout-btn:hover { background:rgba(255,255,255,0.32); }
+
+        .layout { display:grid; grid-template-columns:1fr 420px; gap:18px; margin-top:18px; }
+        @media(max-width:1100px){ .layout{grid-template-columns:1fr;} }
+        .card { background:var(--card); border-radius:var(--radius); padding:16px; box-shadow:var(--shadow); }
+        .section { margin-bottom:14px; }
+        .budget-row { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+        input[type="number"], input[type="text"], select {
+            padding:10px; border-radius:10px; border:1px solid #e6e9ef;
+            font-size:0.95rem; min-width:140px; font-family:inherit;
+        }
+        input:focus, select:focus { outline:2px solid var(--c4); border-color:var(--c4); }
+        .btn { padding:10px 14px; border-radius:10px; border:none; cursor:pointer; font-weight:700; box-shadow:0 6px 18px rgba(15,23,42,0.06); transition:transform 0.2s,box-shadow 0.2s; font-family:inherit; }
+        .btn:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(15,23,42,0.12); }
+        .btn:active { transform:translateY(0); }
+        .btn-primary { background:linear-gradient(90deg,var(--c4),var(--c3)); color:#06202a; }
+        .btn-positive{ background:linear-gradient(90deg,var(--c3),var(--c2)); color:#06202a; }
+        .btn-danger  { background:linear-gradient(90deg,var(--c1),#ff4b6b);   color:white; }
+        .btn-warning { background:linear-gradient(90deg,var(--c2),#ffd86b);   color:#06202a; }
+        .btn-purple  { background:linear-gradient(90deg,var(--c5),#9b6bff);   color:white; }
+        .btn-info    { background:linear-gradient(90deg,#4ecdc4,#44a8a0);     color:white; }
+        .form-row { display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap; }
+        .label { font-weight:700; color:var(--muted); font-size:0.92rem; margin-bottom:4px; }
+        table { width:100%; border-collapse:collapse; margin-top:10px; font-size:0.95rem; }
+        thead th { background:linear-gradient(90deg,#1f2937,#111827); color:white; padding:10px; text-align:left; }
+        th,td { padding:10px; border-bottom:1px solid #f1f5f9; }
+        tbody tr { cursor:pointer; transition:background 0.2s; }
+        tbody tr:hover { background:rgba(107,183,255,0.06); }
+        tbody tr.selected { outline:3px solid rgba(107,183,255,0.5); background:rgba(107,183,255,0.15); }
+        .bottom { display:flex; justify-content:space-between; align-items:center; margin-top:12px; flex-wrap:wrap; gap:8px; }
+        .totals { font-weight:800; font-size:1.1rem; }
+        .side { display:flex; flex-direction:column; gap:18px; }
+        .side .panel { background:linear-gradient(180deg,#ffffff,#f9fbff); padding:14px; border-radius:12px; box-shadow:var(--shadow); }
+        canvas { display:block; max-width:100%; height:320px !important; border-radius:10px; margin-top:12px; }
+        .modal-backdrop { position:fixed; left:0; top:0; width:100%; height:100%; display:none; align-items:center; justify-content:center; background:rgba(2,6,23,0.5); z-index:999; backdrop-filter:blur(4px); }
+        .modal { background:white; padding:24px; border-radius:12px; max-width:600px; width:92%; max-height:80vh; overflow:auto; box-shadow:0 20px 60px rgba(0,0,0,0.3); }
+        .modal-large { max-width:900px; }
+        .tag { padding:6px 12px; border-radius:999px; font-weight:700; font-size:0.85rem; box-shadow:0 2px 8px rgba(0,0,0,0.1); }
+        footer { margin-top:18px; font-size:0.85rem; color:var(--muted); text-align:center; padding:12px; }
+        code { background:#f0f0f0; padding:2px 6px; border-radius:4px; font-family:monospace; }
+        @media(max-width:768px){ header h1{font-size:1.3rem;} .budget-row,.form-row{flex-direction:column;align-items:stretch;} table{font-size:0.85rem;} th,td{padding:8px;} }
+    </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════ AUTH ═══ -->
+<div id="authWrapper">
+    <div class="auth-box">
+        <div class="auth-logo">
+            <span class="icon">💸</span>
+            <h1>Expense Tracker</h1>
+            <p>Smart daily spending management</p>
+        </div>
+
+        <!-- Tabs: Login / Register -->
+        <div class="auth-tabs" id="authTabs">
+            <button class="auth-tab active" onclick="switchTab('login')">Login</button>
+            <button class="auth-tab"        onclick="switchTab('register')">Register</button>
+        </div>
+
+        <!-- ── LOGIN FORM ── -->
+        <div class="auth-form visible" id="loginForm">
+            <div id="loginMsg" class="auth-msg"></div>
+            <div class="field-group">
+                <label>Username</label>
+                <input id="loginUser" type="text" placeholder="Enter your username"/>
+            </div>
+            <div class="field-group">
+                <label>Password</label>
+                <input id="loginPass" type="password" placeholder="Enter your password"/>
+            </div>
+            <div class="forgot-link">
+                <a onclick="switchTab('forgot')">Forgot password?</a>
+            </div>
+            <button class="auth-btn" onclick="doLogin()">Login →</button>
+        </div>
+
+        <!-- ── REGISTER FORM ── -->
+        <div class="auth-form" id="registerForm">
+            <div id="registerMsg" class="auth-msg"></div>
+            <div class="field-group">
+                <label>Username</label>
+                <input id="regUser" type="text" placeholder="Choose a username"/>
+            </div>
+            <div class="field-group">
+                <label>Email</label>
+                <input id="regEmail" type="email" placeholder="your@email.com"/>
+            </div>
+            <div class="field-group">
+                <label>Password</label>
+                <input id="regPass" type="password" placeholder="Create a password"/>
+            </div>
+            <button class="auth-btn" onclick="doRegister()">Create Account →</button>
+        </div>
+
+        <!-- ── FORGOT PASSWORD FORM ── -->
+        <div class="auth-form" id="forgotForm">
+            <div id="forgotMsg" class="auth-msg"></div>
+
+            <!-- Step 1: enter username + email -->
+            <div id="forgotStep1">
+                <div style="display:flex;flex-direction:column;gap:16px">
+                    <div class="field-group">
+                        <label>Username</label>
+                        <input id="forgotUser" type="text" placeholder="Your username"/>
+                    </div>
+                    <div class="field-group">
+                        <label>Registered Email</label>
+                        <input id="forgotEmail" type="email" placeholder="your@email.com"/>
+                    </div>
+                    <button class="auth-btn" onclick="doForgot()">Send Reset Code →</button>
+                </div>
+            </div>
+
+            <!-- Step 2: enter code + new password -->
+            <div id="forgotStep2" style="display:none;flex-direction:column;gap:16px">
+                <div class="reset-code-box" id="resetCodeBox">
+                    <div class="code" id="resetCodeDisplay"></div>
+                    <p>Use this code below (normally sent by email)</p>
+                </div>
+                <div class="field-group">
+                    <label>Reset Code</label>
+                    <input id="resetCode" type="text" placeholder="6-digit code" maxlength="6"/>
+                </div>
+                <div class="field-group">
+                    <label>New Password</label>
+                    <input id="newPass" type="password" placeholder="New password (min 4 chars)"/>
+                </div>
+                <button class="auth-btn" onclick="doResetPassword()">Reset Password →</button>
+            </div>
+
+            <div class="back-link" style="margin-top:4px">
+                <a onclick="switchTab('login')">← Back to Login</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ APP ════ -->
+<div id="appWrapper">
+    <div class="wrap">
+        <header>
+            <div class="header-left">
+                <div style="font-size:28px">💸</div>
+                <div>
+                    <h1>Daily Expense Tracker</h1>
+                    <p>Track, analyse, and manage your daily spending</p>
+                </div>
+            </div>
+            <div class="user-badge">
+                <span>👤 <span id="loggedUserLabel"></span></span>
+                <button class="logout-btn" onclick="doLogout()">Logout</button>
+            </div>
+        </header>
+
+        <div class="layout">
+            <div class="card">
+                <div class="section budget-row">
+                    <div style="flex:1;min-width:220px">
+                        <div class="label">Monthly Budget (₹)</div>
+                        <input id="budgetInput" type="number" placeholder="Enter monthly budget"/>
+                    </div>
+                    <div style="display:flex;gap:8px;align-items:center">
+                        <button id="setBudgetBtn" class="btn btn-primary">Set Budget</button>
+                    </div>
+                    <div style="margin-left:auto;text-align:right">
+                        <div id="budgetDisplay" class="label">Budget: ₹0.00</div>
+                        <div id="remainingDisplay" style="font-weight:900;color:#06b;font-size:1.05rem">Remaining: ₹0.00</div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <div style="font-weight:800;margin-bottom:8px">Add Expense</div>
+                    <div class="form-row">
+                        <div>
+                            <div class="label">Amount (₹)</div>
+                            <input id="amountInput" type="number" placeholder="e.g. 250"/>
+                        </div>
+                        <div>
+                            <div class="label">Category</div>
+                            <select id="categoryInput">
+                                <option>Food</option><option>Transportation</option>
+                                <option>Entertainment</option><option>Shopping</option>
+                                <option>Bills</option><option>Healthcare</option>
+                                <option>Education</option><option>Miscellaneous</option>
+                            </select>
+                        </div>
+                        <div style="flex:1;min-width:180px">
+                            <div class="label">Description</div>
+                            <input id="descInput" type="text" placeholder="Short description (optional)"/>
+                        </div>
+                        <div>
+                            <button id="addBtn" class="btn btn-positive">Add Expense</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+                        <div style="font-weight:800">Expense List</div>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap">
+                            <button id="refreshBtn"     class="btn">Refresh</button>
+                            <button id="deleteBtn"      class="btn btn-danger">Delete Selected</button>
+                            <button id="clearBtn"       class="btn btn-warning">Clear All</button>
+                            <button id="summaryBtn"     class="btn btn-primary">Summary</button>
+                            <button id="advisorBtn"     class="btn btn-purple">Financial Advisor</button>
+                            <button id="monthlyGraphBtn"class="btn btn-info">📊 Monthly Graph</button>
+                        </div>
+                    </div>
+                    <table id="expenseTable">
+                        <thead><tr><th>#</th><th>Date</th><th>Category</th><th>Amount (₹)</th><th>Description</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+                <div class="bottom">
+                    <div id="totalLabel" class="totals">Total Expenses: ₹0.00</div>
+                    <div class="label">Tip: Click a row to select it for deletion</div>
+                </div>
+            </div>
+
+            <div class="side">
+                <div class="panel">
+                    <div style="display:flex;justify-content:space-between;align-items:center">
+                        <div style="font-weight:800">Spending Breakdown</div>
+                        <div class="label" style="font-size:0.8rem">Realtime</div>
+                    </div>
+                    <canvas id="pieChart"></canvas>
+                    <div id="legend" style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center"></div>
+                </div>
+                <div class="panel" style="text-align:center">
+                    <div style="font-weight:800;margin-bottom:10px">Utilities</div>
+                    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+                        <button id="exportBtn"  class="btn btn-primary">Export JSON</button>
+                        <button id="importBtn"  class="btn btn-positive">Import JSON</button>
+                        <input type="file" id="fileInput" accept="application/json" style="display:none"/>
+                    </div>
+                    <div style="margin-top:12px;color:var(--muted);font-size:0.85rem">
+                        API: <code>http://localhost:8080/api/expenses</code>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <footer>Place in <strong>src/main/resources/static/index.html</strong> and run Spring Boot</footer>
+    </div>
+
+    <div id="modalBackdrop" class="modal-backdrop">
+        <div class="modal modal-large">
+            <div id="modalBody"></div>
+            <div style="text-align:center;margin-top:16px">
+                <button id="closeModalBtn" class="btn btn-primary">Close</button>
+            </div>
+        </div>
+    </div>
+</div><!-- end appWrapper -->
+
+<script>
+    // ════════════════════════════════════════════════════════════
+    //  CONFIG
+    // ════════════════════════════════════════════════════════════
+    const BASE      = "http://localhost:8080/api/expenses";
+    const AUTH_BASE = "http://localhost:8080/api/auth";
+
+    let currentUser = sessionStorage.getItem("expenseUser") || null;
+
+    // ════════════════════════════════════════════════════════════
+    //  AUTH UI HELPERS
+    // ════════════════════════════════════════════════════════════
+    function switchTab(tab) {
+        // hide all forms
+        ["loginForm","registerForm","forgotForm"].forEach(id => {
+            document.getElementById(id).classList.remove("visible");
+        });
+        // reset tab buttons
+        document.querySelectorAll(".auth-tab").forEach(b => b.classList.remove("active"));
+
+        if (tab === "login") {
+            document.getElementById("loginForm").classList.add("visible");
+            document.querySelectorAll(".auth-tab")[0].classList.add("active");
+            document.getElementById("authTabs").style.display = "flex";
+        } else if (tab === "register") {
+            document.getElementById("registerForm").classList.add("visible");
+            document.querySelectorAll(".auth-tab")[1].classList.add("active");
+            document.getElementById("authTabs").style.display = "flex";
+        } else if (tab === "forgot") {
+            document.getElementById("forgotForm").classList.add("visible");
+            document.getElementById("authTabs").style.display = "none";
+            // reset forgot to step 1
+            document.getElementById("forgotStep1").style.display = "block";
+            document.getElementById("forgotStep2").style.display = "none";
+            document.getElementById("resetCodeBox").style.display = "none";
+            clearMsg("forgotMsg");
+        }
+    }
+
+    function showMsg(id, text, type) {
+        const el = document.getElementById(id);
+        el.textContent  = text;
+        el.className    = "auth-msg " + type;
+    }
+    function clearMsg(id) {
+        const el = document.getElementById(id);
+        el.textContent = "";
+        el.className   = "auth-msg";
+    }
+
+    // ════════════════════════════════════════════════════════════
+    //  AUTH ACTIONS
+    // ════════════════════════════════════════════════════════════
+    async function doLogin() {
+        const username = document.getElementById("loginUser").value.trim();
+        const password = document.getElementById("loginPass").value.trim();
+        if (!username || !password) { showMsg("loginMsg","Please fill in all fields.","error"); return; }
+        try {
+            const res  = await fetch(`${AUTH_BASE}/login`, {
+                method:"POST", headers:{"Content-Type":"application/json"},
+                body: JSON.stringify({username, password})
+            });
+            const data = await res.json();
+            if (data.success) {
+                currentUser = data.username;
+                sessionStorage.setItem("expenseUser", currentUser);
+                showApp();
+            } else {
+                showMsg("loginMsg", data.message, "error");
+            }
+        } catch(e) { showMsg("loginMsg","Server error. Is Spring Boot running?","error"); }
+    }
+
+    async function doRegister() {
+        const username = document.getElementById("regUser").value.trim();
+        const email    = document.getElementById("regEmail").value.trim();
+        const password = document.getElementById("regPass").value.trim();
+        if (!username || !email || !password) { showMsg("registerMsg","Please fill in all fields.","error"); return; }
+        try {
+            const res  = await fetch(`${AUTH_BASE}/register`, {
+                method:"POST", headers:{"Content-Type":"application/json"},
+                body: JSON.stringify({username, email, password})
+            });
+            const data = await res.json();
+            if (data.success) {
+                showMsg("registerMsg", data.message, "success");
+                setTimeout(() => switchTab("login"), 1800);
+            } else {
+                showMsg("registerMsg", data.message, "error");
+            }
+        } catch(e) { showMsg("registerMsg","Server error. Is Spring Boot running?","error"); }
+    }
+
+    async function doForgot() {
+        const username = document.getElementById("forgotUser").value.trim();
+        const email    = document.getElementById("forgotEmail").value.trim();
+        if (!username || !email) { showMsg("forgotMsg","Please fill in both fields.","error"); return; }
+        try {
+            const res  = await fetch(`${AUTH_BASE}/forgot-password`, {
+                method:"POST", headers:{"Content-Type":"application/json"},
+                body: JSON.stringify({username, email})
+            });
+            const data = await res.json();
+            if (data.success) {
+                showMsg("forgotMsg", data.message, "info");
+                // Show the code (demo only – remove in production)
+                if (data.resetCode) {
+                    document.getElementById("resetCodeDisplay").textContent = data.resetCode;
+                    document.getElementById("resetCodeBox").style.display = "block";
+                }
+                document.getElementById("forgotStep1").style.display = "none";
+                document.getElementById("forgotStep2").style.display = "flex";
+            } else {
+                showMsg("forgotMsg", data.message, "error");
+            }
+        } catch(e) { showMsg("forgotMsg","Server error. Is Spring Boot running?","error"); }
+    }
+
+    async function doResetPassword() {
+        const username    = document.getElementById("forgotUser").value.trim();
+        const resetCode   = document.getElementById("resetCode").value.trim();
+        const newPassword = document.getElementById("newPass").value.trim();
+        if (!resetCode || !newPassword) { showMsg("forgotMsg","Please fill in the code and new password.","error"); return; }
+        try {
+            const res  = await fetch(`${AUTH_BASE}/reset-password`, {
+                method:"POST", headers:{"Content-Type":"application/json"},
+                body: JSON.stringify({username, resetCode, newPassword})
+            });
+            const data = await res.json();
+            if (data.success) {
+                showMsg("forgotMsg", data.message, "success");
+                setTimeout(() => switchTab("login"), 2000);
+            } else {
+                showMsg("forgotMsg", data.message, "error");
+            }
+        } catch(e) { showMsg("forgotMsg","Server error.","error"); }
+    }
+
+    function doLogout() {
+        currentUser = null;
+        sessionStorage.removeItem("expenseUser");
+        document.getElementById("appWrapper").style.display  = "none";
+        document.getElementById("authWrapper").style.display = "flex";
+        switchTab("login");
+        // clear inputs
+        document.getElementById("loginUser").value = "";
+        document.getElementById("loginPass").value = "";
+    }
+
+    function showApp() {
+        document.getElementById("authWrapper").style.display = "none";
+        document.getElementById("appWrapper").style.display  = "block";
+        document.getElementById("loggedUserLabel").textContent = currentUser;
+        loadExpenses();
+    }
+
+    // Allow Enter key on login inputs
+    document.getElementById("loginPass").addEventListener("keydown", e => { if(e.key==="Enter") doLogin(); });
+    document.getElementById("loginUser").addEventListener("keydown", e => { if(e.key==="Enter") doLogin(); });
+
+    // ════════════════════════════════════════════════════════════
+    //  EXPENSE APP — same as before
+    // ════════════════════════════════════════════════════════════
+    const categoryColors = {
+        "Food":"#ff6b6b","Transportation":"#4ecdc4","Entertainment":"#95e1d3",
+        "Shopping":"#f38181","Bills":"#aa96da","Healthcare":"#fcbad3",
+        "Education":"#a8d8ea","Miscellaneous":"#a8dadc"
+    };
+
+    let expenses=[], budget=0, selectedRows=new Set(), pieChart=null, monthlyBarChart=null;
+
+    document.getElementById("setBudgetBtn").addEventListener("click", setBudget);
+    document.getElementById("addBtn").addEventListener("click", addExpense);
+    document.getElementById("refreshBtn").addEventListener("click", loadExpenses);
+    document.getElementById("deleteBtn").addEventListener("click", deleteSelected);
+    document.getElementById("clearBtn").addEventListener("click", clearAll);
+    document.getElementById("summaryBtn").addEventListener("click", showSummary);
+    document.getElementById("advisorBtn").addEventListener("click", showAdvice);
+    document.getElementById("monthlyGraphBtn").addEventListener("click", showMonthlyGraph);
+    document.getElementById("exportBtn").addEventListener("click", exportData);
+    document.getElementById("importBtn").addEventListener("click", () => document.getElementById("fileInput").click());
+    document.getElementById("fileInput").addEventListener("change", importData);
+    document.getElementById("closeModalBtn").addEventListener("click", closeModal);
+    document.getElementById("modalBackdrop").addEventListener("click", e => { if(e.target===document.getElementById("modalBackdrop")) closeModal(); });
+
+    function showModal(html) { document.getElementById("modalBody").innerHTML=html; document.getElementById("modalBackdrop").style.display="flex"; }
+    function closeModal() { document.getElementById("modalBackdrop").style.display="none"; if(monthlyBarChart){monthlyBarChart.destroy();monthlyBarChart=null;} }
+
+    async function setBudget() {
+        const val=Number(document.getElementById("budgetInput").value);
+        if(isNaN(val)||val<=0){alert("Enter a valid budget > 0");return;}
+        try {
+            const res=await fetch(`${BASE}/budget`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({budget:val})});
+            if(!res.ok) throw new Error(await res.text());
+            document.getElementById("budgetInput").value="";
+            await loadExpenses();
+        } catch(e){alert("Failed: "+e.message);}
+    }
+
+    async function addExpense() {
+        const amount=Number(document.getElementById("amountInput").value);
+        if(isNaN(amount)||amount<=0){alert("Enter a valid amount > 0");return;}
+        const category=document.getElementById("categoryInput").value;
+        const description=document.getElementById("descInput").value.trim()||"No description";
+        try {
+            const url=`${BASE}/add?category=${encodeURIComponent(category)}&amount=${amount}&description=${encodeURIComponent(description)}`;
+            const res=await fetch(url,{method:"POST"});
+            if(!res.ok) throw new Error(await res.text());
+            document.getElementById("amountInput").value="";
+            document.getElementById("descInput").value="";
+            await loadExpenses();
+        } catch(e){alert("Failed: "+e.message);}
+    }
+
+    async function loadExpenses() {
+        try {
+            const [lr,sr]=await Promise.all([fetch(`${BASE}/list`),fetch(`${BASE}/summary`)]);
+            if(!lr.ok||!sr.ok) throw new Error("Fetch failed");
+            expenses=await lr.json();
+            const s=await sr.json();
+            budget=s.monthlyBudget||0;
+            document.getElementById("budgetDisplay").textContent=`Budget: ₹${budget.toFixed(2)}`;
+            const rem=s.remaining||0;
+            document.getElementById("remainingDisplay").textContent=`Remaining: ₹${rem.toFixed(2)}`;
+            document.getElementById("remainingDisplay").style.color=rem<0?"#ff4444":"#0066bb";
+            renderExpenses();
+            updateChart(s.categoryTotals||{},s.totalExpenses||0,rem);
+        } catch(e){console.error(e);}
+    }
+
+    function renderExpenses() {
+        const tbody=document.querySelector("#expenseTable tbody");
+        tbody.innerHTML=""; selectedRows.clear();
+        expenses.forEach((expense,i)=>{
+            const tr=document.createElement("tr");
+            tr.addEventListener("click",()=>{
+                if(selectedRows.has(i)){selectedRows.delete(i);tr.classList.remove("selected");}
+                else{selectedRows.add(i);tr.classList.add("selected");}
+            });
+            tr.innerHTML=`<td>${i+1}</td><td>${expense.date}</td><td>${expense.category}</td><td>₹${expense.amount.toFixed(2)}</td><td>${expense.description}</td>`;
+            tbody.appendChild(tr);
+        });
+        document.getElementById("totalLabel").textContent=`Total Expenses: ₹${expenses.reduce((s,e)=>s+e.amount,0).toFixed(2)}`;
+    }
+
+    async function deleteSelected() {
+        if(selectedRows.size===0){alert("Select at least one row");return;}
+        if(!confirm(`Delete ${selectedRows.size} expense(s)?`)) return;
+        try {
+            for(const idx of Array.from(selectedRows).sort((a,b)=>b-a)){
+                const res=await fetch(`${BASE}/${idx}`,{method:"DELETE"});
+                if(!res.ok) throw new Error(await res.text());
+            }
+            selectedRows.clear(); await loadExpenses();
+        } catch(e){alert("Error: "+e.message);}
+    }
+
+    async function clearAll() {
+        if(expenses.length===0){alert("No expenses");return;}
+        if(!confirm("Clear ALL expenses?")) return;
+        try {
+            const res=await fetch(`${BASE}/clear`,{method:"DELETE"});
+            if(!res.ok) throw new Error(await res.text());
+            selectedRows.clear(); await loadExpenses();
+        } catch(e){alert("Error: "+e.message);}
+    }
+
+    async function showSummary() {
+        try {
+            const res=await fetch(`${BASE}/summary`);
+            const {monthlyBudget,totalExpenses,remaining,usedPercent,categoryTotals}=await res.json();
+            let html=`<div style="font-family:sans-serif"><div style="text-align:center"><b style="font-size:1.3em">EXPENSE SUMMARY</b></div><hr style="margin:12px 0"/>
+            <div><b>Budget:</b> ₹${monthlyBudget.toFixed(2)}</div><div><b>Spent:</b> ₹${totalExpenses.toFixed(2)}</div>
+            <div><b>Remaining:</b> ₹${remaining.toFixed(2)}</div><div><b>Used:</b> ${usedPercent.toFixed(1)}%</div>
+            <br><div style="font-weight:600;font-size:1.1em">Category Breakdown:</div>`;
+            for(const cat in categoryTotals){
+                const val=categoryTotals[cat],pct=totalExpenses>0?(val/totalExpenses)*100:0,col=categoryColors[cat]||"#999";
+                html+=`<div style="margin:6px 0;padding:8px;background:${col}22;border-left:4px solid ${col};border-radius:4px"><b>${cat}:</b> ₹${val.toFixed(2)} (${pct.toFixed(1)}%)</div>`;
+            }
+            showModal(html+"</div>");
+        } catch(e){alert("Error: "+e.message);}
+    }
+
+    async function showAdvice() {
+        try {
+            const res=await fetch(`${BASE}/advice`);
+            const data=await res.json();
+            const cols={danger:"#ff4444",warning:"#ff9800",success:"#4caf50",info:"#2196f3"};
+            let html=`<div style="font-family:sans-serif"><h3 style="color:${cols[data.level]||"#666"};margin-top:0">💼 Financial Advisor</h3>
+            <div style="padding:16px;background:#f5f5f5;border-radius:8px"><p style="font-size:1.1em;margin:0">${data.advice}</p></div>`;
+            if(data.topCategory) html+=`<div style="margin-top:12px"><b>Top Spending:</b> ${data.topCategory} (₹${Number(data.topCategoryAmount).toFixed(2)})</div>`;
+            html+=`<div style="margin-top:16px;padding:12px;background:#e3f2fd;border-radius:8px"><b>General Tips:</b><ul style="margin:8px 0"><li>Save at least 20% of income</li><li>Track expenses weekly</li><li>Separate savings and spending accounts</li><li>Review subscriptions regularly</li></ul></div></div>`;
+            showModal(html);
+        } catch(e){alert("Error: "+e.message);}
+    }
+
+    async function showMonthlyGraph() {
+        try {
+            const res=await fetch(`${BASE}/monthly-stats`);
+            const data=await res.json();
+            if(!data.months||data.months.length===0){alert("No data yet!");return;}
+            let html=`<div style="font-family:sans-serif"><h3 style="margin-top:0;text-align:center">📊 Monthly Expense Trends</h3><canvas id="monthlyBarChart" height="300"></canvas><div style="margin-top:16px;max-height:200px;overflow-y:auto">`;
+            data.months.forEach((m,i)=>{
+                const count=data.monthlyCount[m]||0;
+                html+=`<div style="padding:8px;margin:6px 0;background:linear-gradient(90deg,#e3f2fd,#f3e5f5);border-radius:6px;display:flex;justify-content:space-between"><span><b>${m}</b> (${count} expense${count!==1?"s":""})</span><span style="font-weight:700;color:#1976d2">₹${Number(data.amounts[i]).toFixed(2)}</span></div>`;
+            });
+            html+=`</div></div>`;
+            showModal(html);
+            setTimeout(()=>{
+                const canvas=document.getElementById("monthlyBarChart");
+                if(!canvas) return;
+                if(monthlyBarChart) monthlyBarChart.destroy();
+                monthlyBarChart=new Chart(canvas.getContext("2d"),{
+                    type:"bar",data:{labels:data.months,datasets:[{label:"Monthly Expenses (₹)",data:data.amounts,backgroundColor:"rgba(54,162,235,0.7)",borderColor:"rgba(54,162,235,1)",borderWidth:2,borderRadius:6}]},
+                    options:{responsive:true,plugins:{legend:{display:true}},scales:{y:{beginAtZero:true,ticks:{callback:v=>"₹"+v}},x:{grid:{display:false}}}}
+                });
+            },150);
+        } catch(e){alert("Error: "+e.message);}
+    }
+
+    async function exportData() {
+        try {
+            const res=await fetch(`${BASE}/export`);
+            const data=await res.json();
+            const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+            const url=URL.createObjectURL(blob);
+            const a=Object.assign(document.createElement("a"),{href:url,download:`expenses_${new Date().toISOString().split("T")[0]}.json`});
+            document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+        } catch(e){alert("Export failed: "+e.message);}
+    }
+
+    async function importData(event) {
+        const file=event.target.files[0]; if(!file) return;
+        try {
+            const data=JSON.parse(await file.text());
+            const res=await fetch(`${BASE}/import`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)});
+            if(!res.ok) throw new Error(await res.text());
+            const result=await res.json();
+            alert(result.message);
+            await loadExpenses();
+        } catch(e){alert("Import failed: "+e.message);}
+        finally{document.getElementById("fileInput").value="";}
+    }
+
+    function updateChart(categoryTotals,totalExpenses,remainingBudget) {
+        const hasCats=Object.keys(categoryTotals).length>0;
+        const labels=hasCats?[...Object.keys(categoryTotals),"Remaining"]:["Remaining"];
+        const values=hasCats?[...Object.values(categoryTotals),Math.max(0,remainingBudget)]:[Math.max(0,remainingBudget)];
+        const colors=hasCats?[...Object.keys(categoryTotals).map(k=>categoryColors[k]||"#999"),"#ffcc99"]:["#ffcc99"];
+         const pieCanvas=document.getElementById("pieChart");
+        const legendDiv=document.getElementById("legend");
+        if(pieChart) pieChart.destroy();
+        if(values.every(v=>v===0)){legendDiv.innerHTML='<div style="color:#999;text-align:center">No data</div>';pieChart=null;return;}
+        pieChart=new Chart(pieCanvas,{
+            type:"pie",
+            data:{labels,datasets:[{data:values,backgroundColor:colors,borderWidth:2,borderColor:"#fff"}]},
+            options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>{const t=ctx.dataset.data.reduce((a,b)=>a+b,0);return `${ctx.label}: ₹${ctx.parsed.toFixed(2)} (${((ctx.parsed/t)*100).toFixed(1)}%)`;}}}}
+        }});
+        legendDiv.innerHTML="";
+        labels.forEach((label,i)=>{
+            const pct=budget>0?(values[i]/budget*100).toFixed(1):"—";
+            const tag=Object.assign(document.createElement("div"),{className:"tag",textContent:`${label} ${pct}%`});
+            tag.style.cssText=`background:${colors[i]};color:${label==="Remaining"?"#333":"#fff"}`;
+            legendDiv.appendChild(tag);
+        });
+    }
+
+    // ── Auto-login if session still active ──
+    window.onload = () => {
+        if (currentUser) { showApp(); }
+    };
+</script>
+</body>
+</html>
+           ← replaced with above

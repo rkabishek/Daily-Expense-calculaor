@@ -1,0 +1,4 @@
+BUDGET:10000.0
+09/11/2025,Food,500.0,Groceries
+09/11/2025,Transportation,300.0,Bus fare
+09/11/2025,Shopping,1200.0,Clothes
